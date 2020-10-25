@@ -1,18 +1,21 @@
 import { join, resolve } from 'path';
 import { lstatSync, readdirSync, realpathSync } from 'fs';
 
-export function totalist(dir, callback, prefix, cache) {
-	cache = cache || new Set;
-	dir = realpathSync(resolve('.', dir));
-	if (!cache.has(dir)) {
+function walk(dir, stats, callback, cache, prefix) {
+	if (!stats.isSymbolicLink() || !cache.has(dir = realpathSync(dir))) {
 		cache.add(dir);
-		let i=0, abs, stats;
+		let i=0, abs, xyz;
 		let arr = readdirSync(dir);
 		for (; i < arr.length; i++) {
-			stats = lstatSync(abs = join(dir, arr[i]));
-			stats.isDirectory()
-				? totalist(abs, callback, join(prefix || '', arr[i]), cache)
-				: callback(join(prefix || '', arr[i]), abs, stats);
+			xyz = lstatSync(abs = join(dir, arr[i]));
+			xyz.isDirectory()
+				? walk(abs, xyz, callback, cache, join(prefix, arr[i]))
+				: callback(join(prefix, arr[i]), abs, xyz);
 		}
 	}
+}
+
+export function totalist(dir, callback, prefix) {
+	let stats = lstatSync(dir = resolve('.', dir));
+	if (stats.isDirectory()) walk(dir, stats, callback, new Set, prefix || '');
 }
